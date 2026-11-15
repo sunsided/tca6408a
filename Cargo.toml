@@ -4,7 +4,7 @@ members = ["tca6408a-registers", "tca6408a", "tca6408a-sim"]
 exclude = ["sim/wokwi-chip", "examples"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Markus Mayer <widemeadows@gmail.com>"]
 license = "EUPL-1.2 OR MIT OR Apache-2.0"
 homepage = "https://github.com/sunsided/tca6408a"
@@ -21,7 +21,7 @@ embedded-hal-async = "1.0.0"
 embassy-futures = "0.1.2"
 fake-bus = "0.1.0"
 hardware-registers = { version = "0.4.0", default-features = false, features = ["i2c"] }
-tca6408a-registers = { version = "0.1.0", path = "tca6408a-registers" }
+tca6408a-registers = { version = "0.1.1", path = "tca6408a-registers" }
 tca6408a-sim = { path = "tca6408a-sim" }
 
 [workspace.lints.clippy]
