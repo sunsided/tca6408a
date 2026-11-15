@@ -55,6 +55,31 @@ The behavioral model in `tca6408a-sim` is used both as a fake I²C bus in host t
 [Wokwi](https://wokwi.com) custom chip (`sim/wokwi-chip`). Example firmware in `examples/`
 runs against the emulated chip using `wokwi-cli`.
 
+### Use the chip in your own Wokwi project
+
+Every [GitHub Release](https://github.com/sunsided/tca6408a/releases) carries the chip as
+`chip.zip`. Add a `chip-tca6408a` part and this dependency to your `diagram.json`, with the
+latest release version written without the tag's `v` (`@v0.1.0` fails to load):
+
+```json
+"dependencies": { "chip-tca6408a": "github:sunsided/tca6408a@0.1.0" }
+```
+
+This works on [wokwi.com](https://wokwi.com), in the Wokwi VS Code extension and with
+`wokwi-cli`; nothing needs to be built.
+
+### Run the example locally
+
+Needs [`wokwi-cli`](https://docs.wokwi.com/wokwi-ci/cli-installation) and a
+`WOKWI_CLI_TOKEN` from the [Wokwi CI dashboard](https://wokwi.com/dashboard/ci):
+
+```sh
+task wokwi:test
+```
+
+[`sim/wokwi-chip`](sim/wokwi-chip/README.md) describes building the chip and its pins;
+[`examples/esp32c3`](examples/esp32c3/README.md) the wiring and the scenario.
+
 ## Releasing
 
 Both crates share one version. From `main`, with the changes listed under
