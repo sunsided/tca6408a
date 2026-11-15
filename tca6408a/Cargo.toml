@@ -20,14 +20,18 @@ workspace = true
 [features]
 async = ["dep:embedded-hal-async"]
 defmt = ["dep:defmt", "tca6408a-registers/defmt"]
+pins = []
+critical-section = ["pins", "dep:critical-section"]
 
 [dependencies]
 tca6408a-registers.workspace = true
+critical-section = { workspace = true, optional = true }
 defmt = { workspace = true, optional = true }
 embedded-hal.workspace = true
 embedded-hal-async = { workspace = true, optional = true }
 
 [dev-dependencies]
+critical-section = { workspace = true, features = ["std"] }
 tca6408a-sim.workspace = true
 embassy-futures.workspace = true
 embedded-hal-async.workspace = true

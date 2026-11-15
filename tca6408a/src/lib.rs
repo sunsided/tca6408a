@@ -14,6 +14,18 @@
 //! a pin an output without a glitch, use [`Tca6408a::make_outputs`]: it sets the output
 //! latch before switching the direction, so the pin starts driving the requested level.
 //!
+//! ## Pin handles
+//!
+//! With the `pins` feature, `Tca6408a::into_shared` and `Shared::split` hand out the pins
+//! `P0` to `P7` as `embedded-hal` [`InputPin`], [`OutputPin`] and [`StatefulOutputPin`]
+//! implementations for the blocking driver. The pins share the driver and a cache of the
+//! Output and Configuration registers through a mutex; the `critical-section` feature adds
+//! an implementation for `critical_section::Mutex`. See the `pins` module.
+//!
+//! [`InputPin`]: embedded_hal::digital::InputPin
+//! [`OutputPin`]: embedded_hal::digital::OutputPin
+//! [`StatefulOutputPin`]: embedded_hal::digital::StatefulOutputPin
+//!
 //! ## Interrupt
 //!
 //! The open-drain, active-low `INT` output is asserted when a pin configured as an input
@@ -34,6 +46,9 @@
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 pub mod asynch;
+#[cfg(feature = "pins")]
+#[cfg_attr(docsrs, doc(cfg(feature = "pins")))]
+pub mod pins;
 
 pub use tca6408a_registers as registers;
 pub use tca6408a_registers::{ALTERNATE_DEVICE_ADDRESS, DEFAULT_DEVICE_ADDRESS};
@@ -61,6 +76,23 @@ where
     rst.set_low()?;
     delay.delay_ns(RESET_PULSE_NS);
     rst.set_high()
+}
+
+/// The Output and Configuration registers, as last written.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub(crate) struct Latch {
+    pub(crate) output: u8,
+    pub(crate) config: u8,
+}
+
+impl Latch {
+    /// Makes the masked pins outputs driving the matching bits of `levels`.
+    pub(crate) const fn with_outputs(self, pins: u8, levels: u8) -> Self {
+        Self {
+            output: self.output & !pins | levels & pins,
+            config: self.config & !pins,
+        }
+    }
 }
 
 /// TCA6408A driver.
@@ -152,10 +184,26 @@ where
     /// Writes the output latch before the direction, so the pins never drive a stale
     /// latch value.
     pub fn make_outputs(&mut self, pins: u8, levels: u8) -> Result<(), I2C::Error> {
-        self.modify_register(|r: OutputPort| {
-            OutputPort::from(u8::from(r) & !pins | levels & pins)
-        })?;
-        self.modify_register(|r: Configuration| Configuration::from(u8::from(r) & !pins))
+        let mut latch = Latch {
+            output: self.read_outputs()?,
+            config: self.read_configuration()?,
+        };
+        let target = latch.with_outputs(pins, levels);
+        self.write_latch(&mut latch, target)
+    }
+
+    /// Writes the output latch, then the direction: the order that keeps pins turning into
+    /// outputs glitch-free. Updates `cache` after each write that succeeded.
+    pub(crate) fn write_latch(
+        &mut self,
+        cache: &mut Latch,
+        target: Latch,
+    ) -> Result<(), I2C::Error> {
+        self.write_outputs(target.output)?;
+        cache.output = target.output;
+        self.write_configuration(target.config)?;
+        cache.config = target.config;
+        Ok(())
     }
 
     /// Reads a single register.
