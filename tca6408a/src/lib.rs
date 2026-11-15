@@ -63,6 +63,23 @@ where
     rst.set_high()
 }
 
+/// The Output and Configuration registers, as last written.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub(crate) struct Latch {
+    pub(crate) output: u8,
+    pub(crate) config: u8,
+}
+
+impl Latch {
+    /// Makes the masked pins outputs driving the matching bits of `levels`.
+    pub(crate) const fn with_outputs(self, pins: u8, levels: u8) -> Self {
+        Self {
+            output: self.output & !pins | levels & pins,
+            config: self.config & !pins,
+        }
+    }
+}
+
 /// TCA6408A driver.
 #[derive(Debug)]
 pub struct Tca6408a<I2C> {
@@ -152,10 +169,26 @@ where
     /// Writes the output latch before the direction, so the pins never drive a stale
     /// latch value.
     pub fn make_outputs(&mut self, pins: u8, levels: u8) -> Result<(), I2C::Error> {
-        self.modify_register(|r: OutputPort| {
-            OutputPort::from(u8::from(r) & !pins | levels & pins)
-        })?;
-        self.modify_register(|r: Configuration| Configuration::from(u8::from(r) & !pins))
+        let mut latch = Latch {
+            output: self.read_outputs()?,
+            config: self.read_configuration()?,
+        };
+        let target = latch.with_outputs(pins, levels);
+        self.write_latch(&mut latch, target)
+    }
+
+    /// Writes the output latch, then the direction: the order that keeps pins turning into
+    /// outputs glitch-free. Updates `cache` after each write that succeeded.
+    pub(crate) fn write_latch(
+        &mut self,
+        cache: &mut Latch,
+        target: Latch,
+    ) -> Result<(), I2C::Error> {
+        self.write_outputs(target.output)?;
+        cache.output = target.output;
+        self.write_configuration(target.config)?;
+        cache.config = target.config;
+        Ok(())
     }
 
     /// Reads a single register.
