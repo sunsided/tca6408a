@@ -68,6 +68,9 @@ latest release version written without the tag's `v` (`@v0.1.0` fails to load):
 This works on [wokwi.com](https://wokwi.com), in the Wokwi VS Code extension and with
 `wokwi-cli`; nothing needs to be built.
 
+For a browser demo, [`examples/arduino-esp32c3`](examples/arduino-esp32c3/README.md) has an
+Arduino sketch and `diagram.json` to paste into a new wokwi.com project.
+
 ### Run the example locally
 
 Needs [`wokwi-cli`](https://docs.wokwi.com/wokwi-ci/cli-installation) and a
