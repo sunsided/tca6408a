@@ -1,0 +1,33 @@
+name: Supply enable, buttons and interrupt
+version: 1
+author: Markus Mayer
+
+steps:
+  # P7 is an output driving VCI_EN high; the other pins are inputs.
+  - wait-serial: 'TCA6408A ok config=0x7F output=0xFF'
+  - wait-serial: 'inputs=0xFF vci_en=1'
+
+  # A press asserts INT; the firmware reads the inputs, which clears it.
+  - set-control:
+      part-id: btn_bot
+      control: pressed
+      value: 1
+  - wait-serial: 'inputs=0xFE vci_en=1'
+  - wait-serial: 'pressed BOT'
+  - set-control:
+      part-id: btn_bot
+      control: pressed
+      value: 0
+  - wait-serial: 'inputs=0xFF vci_en=1'
+
+  - set-control:
+      part-id: btn_right
+      control: pressed
+      value: 1
+  - wait-serial: 'inputs=0xEF vci_en=1'
+  - wait-serial: 'pressed RIGHT'
+  - set-control:
+      part-id: btn_right
+      control: pressed
+      value: 0
+  - wait-serial: 'inputs=0xFF vci_en=1'

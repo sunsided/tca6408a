@@ -1,0 +1,7 @@
+[build]
+target = "wasm32-unknown-unknown"
+
+[target.wasm32-unknown-unknown]
+# The Wokwi chip API functions are provided by the simulator as wasm imports;
+# the simulator calls callbacks through the exported function table.
+rustflags = ["-C", "link-arg=--import-undefined", "-C", "link-arg=--export-table"]

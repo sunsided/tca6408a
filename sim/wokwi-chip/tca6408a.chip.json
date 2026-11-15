@@ -1,0 +1,9 @@
+{
+  "name": "tca6408a",
+  "author": "Markus Mayer",
+  "pins": [
+    "VCCI", "ADDR", "RESET", "P0", "P1", "P2", "P3", "GND",
+    "P4", "P5", "P6", "P7", "INT", "SCL", "SDA", "VCCP"
+  ],
+  "controls": []
+}

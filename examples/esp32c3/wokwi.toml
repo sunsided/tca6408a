@@ -1,0 +1,8 @@
+[wokwi]
+version = 1
+elf = "target/riscv32imc-unknown-none-elf/release/tca6408a-example-esp32c3"
+firmware = "target/riscv32imc-unknown-none-elf/release/tca6408a-example-esp32c3"
+
+[[chip]]
+name = "tca6408a"
+binary = "../../sim/wokwi-chip/tca6408a.chip.wasm"
