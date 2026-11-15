@@ -14,6 +14,18 @@
 //! a pin an output without a glitch, use [`Tca6408a::make_outputs`]: it sets the output
 //! latch before switching the direction, so the pin starts driving the requested level.
 //!
+//! ## Pin handles
+//!
+//! With the `pins` feature, `Tca6408a::into_shared` and `Shared::split` hand out the pins
+//! `P0` to `P7` as `embedded-hal` [`InputPin`], [`OutputPin`] and [`StatefulOutputPin`]
+//! implementations for the blocking driver. The pins share the driver and a cache of the
+//! Output and Configuration registers through a mutex; the `critical-section` feature adds
+//! an implementation for `critical_section::Mutex`. See the `pins` module.
+//!
+//! [`InputPin`]: embedded_hal::digital::InputPin
+//! [`OutputPin`]: embedded_hal::digital::OutputPin
+//! [`StatefulOutputPin`]: embedded_hal::digital::StatefulOutputPin
+//!
 //! ## Interrupt
 //!
 //! The open-drain, active-low `INT` output is asserted when a pin configured as an input

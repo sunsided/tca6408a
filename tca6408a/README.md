@@ -27,6 +27,21 @@ let inputs = io.read_inputs()?;
 let p0_low = inputs & 0b0000_0001 == 0;
 ```
 
+With the `pins` feature, the pins become `embedded-hal` digital pins:
+
+```rust,ignore
+use core::cell::RefCell;
+use embedded_hal::digital::{InputPin, OutputPin};
+
+let io = Tca6408a::new(i2c).into_shared::<RefCell<_>>()?;
+let pins = io.split();
+
+let mut vci_en = pins.p7;
+vci_en.make_output(true)?; // latch first, then direction
+let mut bot = pins.p0;
+let pressed = bot.is_low()?;
+```
+
 ## Implemented so far
 
 - Port-wide reads and writes of the inputs, output latch, polarity inversion and direction
@@ -34,6 +49,10 @@ let p0_low = inputs & 0b0000_0001 == 0;
   output latch before the direction
 - Hardware reset via the `RESET` pin with datasheet timing
 - Both addresses (`ADDR` low or high)
+- Per-pin `embedded-hal` `InputPin`, `OutputPin` and `StatefulOutputPin` handles
+  (`pins` feature) that share a cached latch through a `RefCell`, a `critical-section`
+  mutex (`critical-section` feature) or your own mutex. No async pins: `embedded-hal-async`
+  only offers `Wait`, which needs `INT` handling outside this driver.
 - Direct access to registers via [`tca6408a-registers`] structs and [`hardware-registers`] traits
 
 [`embedded-hal`]: https://crates.io/crates/embedded-hal
