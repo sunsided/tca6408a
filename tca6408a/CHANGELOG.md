@@ -5,6 +5,10 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-15
+
+[0.1.0]: https://github.com/sunsided/tca6408a/releases/tag/v0.1.0
+
 ### Added
 
 - Blocking driver on `embedded-hal` 1.0 and async driver on `embedded-hal-async` 1.0
