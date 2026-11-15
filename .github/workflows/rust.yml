@@ -1,0 +1,187 @@
+---
+name: Rust
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+# Read-only by default; no job needs more.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  workflows:
+    name: Lint workflows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: actionlint
+        run: |
+          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/914e7df21a07ef503a81201c76d2b11c789d3fca/scripts/download-actionlint.bash) 1.7.12
+          ./actionlint -color
+      - name: zizmor
+        uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
+        with:
+          advanced-security: false
+
+  codespell:
+    name: Check for spelling mistakes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Codespell
+        uses: codespell-project/actions-codespell@e3258cca84ce02b0bb36a3d41f2c18f719a0cc1a # v2.4.3
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check format
+        run: cargo fmt --all --check
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+  docs:
+    name: Build documentation
+    needs:
+      - codespell
+      - lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build documentation
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc --workspace --all-features --no-deps
+
+  build-linux:
+    name: Build on Linux
+    needs:
+      - lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        features: [ "", "--all-features", "--no-default-features" ]
+    env:
+      FEATURES: ${{ matrix.features }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build
+        run: |
+          # shellcheck disable=SC2086 # FEATURES is empty or a single flag.
+          cargo build --workspace --verbose $FEATURES
+      - name: Run doctests
+        run: |
+          # shellcheck disable=SC2086 # FEATURES is empty or a single flag.
+          cargo test --workspace --doc --verbose $FEATURES
+      - name: Run regular tests
+        run: |
+          # shellcheck disable=SC2086 # FEATURES is empty or a single flag.
+          cargo test --workspace --tests --verbose $FEATURES
+
+  build-embedded:
+    name: Build for embedded targets
+    needs:
+      - lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [ thumbv7em-none-eabihf, riscv32imc-unknown-none-elf ]
+    env:
+      TARGET: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install target
+        run: rustup target add "$TARGET"
+      - name: Build
+        run: cargo build -p tca6408a-registers -p tca6408a --all-features --target "$TARGET"
+
+  coverage:
+    name: Coverage
+    needs:
+      - lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # check out the repository
+      id-token: write # authenticate the Codecov upload via OIDC, without a token
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install llvm-tools
+        run: rustup component add llvm-tools
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@ab49d3c64680143e184118bed66a46419fc15519 # v2.90.5
+        with:
+          tool: cargo-llvm-cov
+      - name: Collect coverage
+        run: cargo llvm-cov --workspace --all-features --lcov --output-path lcov.info
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: lcov.info
+          disable_search: true
+          use_oidc: true
+          # Pull requests from forks get no OIDC token; don't fail them for that.
+          fail_ci_if_error: ${{ github.event_name != 'pull_request' }}
+
+  wokwi:
+    name: Wokwi simulation (ESP32-C3)
+    needs:
+      - build-linux
+    runs-on: ubuntu-latest
+    environment: wokwi
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install targets
+        run: rustup target add wasm32-unknown-unknown riscv32imc-unknown-none-elf
+      - name: Lint chip and firmware
+        run: |
+          (cd sim/wokwi-chip && cargo fmt --check && cargo clippy --release -- -D warnings)
+          (cd examples/esp32c3 && cargo fmt --check && cargo clippy --release -- -D warnings)
+      - name: Build chip
+        run: sim/wokwi-chip/build.sh
+      - name: Build firmware
+        working-directory: examples/esp32c3
+        run: cargo build --release
+      - name: Check for Wokwi token
+        id: token
+        env:
+          WOKWI_CLI_TOKEN: ${{ secrets.WOKWI_CLI_TOKEN }}
+        run: echo "present=${WOKWI_CLI_TOKEN:+true}" >> "$GITHUB_OUTPUT"
+      - name: Run scenario
+        if: steps.token.outputs.present == 'true'
+        uses: wokwi/wokwi-ci-action@09e807a07e05b6f2498e43e3fb7ffcf38c277af7 # v1.3.0
+        with:
+          token: ${{ secrets.WOKWI_CLI_TOKEN }}
+          path: examples/esp32c3
+          timeout: 30000
+          scenario: scenarios/buttons.yaml
