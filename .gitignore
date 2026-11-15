@@ -1,0 +1,7 @@
+**/*.rs.bk
+.#*
+target/
+Cargo.lock
+*.chip.wasm
+.task/
+lcov.info
