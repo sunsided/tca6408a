@@ -34,6 +34,9 @@
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 pub mod asynch;
+#[cfg(feature = "pins")]
+#[cfg_attr(docsrs, doc(cfg(feature = "pins")))]
+pub mod pins;
 
 pub use tca6408a_registers as registers;
 pub use tca6408a_registers::{ALTERNATE_DEVICE_ADDRESS, DEFAULT_DEVICE_ADDRESS};
