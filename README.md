@@ -55,6 +55,9 @@ The behavioral model in `tca6408a-sim` is used both as a fake I²C bus in host t
 [Wokwi](https://wokwi.com) custom chip (`sim/wokwi-chip`). Example firmware in `examples/`
 runs against the emulated chip using `wokwi-cli`.
 
+**[Try it in the browser](https://wokwi.com/projects/480780933123347457)**: an ESP32-C3 talking to the emulated TCA6408A on
+wokwi.com. Press the buttons and watch the LED on P7.
+
 ### Use the chip in your own Wokwi project
 
 Every [GitHub Release](https://github.com/sunsided/tca6408a/releases) carries the chip as

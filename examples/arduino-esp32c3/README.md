@@ -5,7 +5,7 @@ raw I²C to the same TCA6408A chip, reads the buttons and drives the `VCI_EN` LE
 prints in the same format as the [Rust example](../esp32c3). The chip is loaded from this
 repository's GitHub Release via the `dependencies` entry in `diagram.json`.
 
-Live project: <TODO>
+Live project: <https://wokwi.com/projects/480780933123347457>
 
 To recreate it on wokwi.com:
 
