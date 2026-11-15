@@ -76,25 +76,36 @@ jobs:
             echo "::error::tag $GITHUB_REF_NAME does not match crate version $version"
             exit 1
           fi
+      - name: Find crates not yet on crates.io
+        id: pending
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          packages=""
+          for crate in tca6408a-registers tca6408a; do
+            status=$(curl -s -o /dev/null -w '%{http_code}' -A "sunsided/tca6408a release workflow" \
+              "https://crates.io/api/v1/crates/$crate/$version")
+            if [ "$status" = "200" ]; then
+              echo "$crate $version is already published, skipping"
+            else
+              packages="$packages -p $crate"
+            fi
+          done
+          echo "packages=$packages" >> "$GITHUB_OUTPUT"
       - name: Authenticate with crates.io
+        if: steps.pending.outputs.packages != ''
         id: auth
         uses: rust-lang/crates-io-auth-action@3268eb413133e2960fa4ae0e963ca76380c54cd9 # v1.0.6
       - name: Publish
+        if: steps.pending.outputs.packages != ''
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
-        # Publishes in dependency order: tca6408a-registers first, then tca6408a. Versions that
-        # are already on crates.io (a manual first release, or a re-run) are skipped.
+          PACKAGES: ${{ steps.pending.outputs.packages }}
+        # Publishes in dependency order: tca6408a-registers first, then tca6408a. Versions that are
+        # already on crates.io (a manual first release, or a re-run) are skipped, and then no
+        # crates.io token is requested.
         run: |
-          for crate in tca6408a-registers tca6408a; do
-            version=$(cargo metadata --no-deps --format-version 1 \
-              | jq -r --arg crate "$crate" '.packages[] | select(.name == $crate) | .version')
-            if curl -sfA "sunsided/tca6408a release workflow" \
-                "https://crates.io/api/v1/crates/$crate/$version" > /dev/null; then
-              echo "$crate $version is already on crates.io; skipping"
-            else
-              cargo publish -p "$crate"
-            fi
-          done
+          # shellcheck disable=SC2086 # PACKAGES is a list of `-p <crate>` flags.
+          cargo publish $PACKAGES
 
   github-release:
     name: Create GitHub Release
